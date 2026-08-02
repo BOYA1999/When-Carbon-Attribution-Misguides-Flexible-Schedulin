@@ -1,0 +1,108 @@
+{
+  "contract_version": "pedf8_20260802_revision_v2",
+  "seed": 20260802,
+  "input": {
+    "ukpn_source_blob": "LPN/2025/LV_Feeder/scpp_ss_fw_active_reactive_may25_final_LV_LPN.csv",
+    "ukpn_source_bytes": 7021267198,
+    "ukpn_source_sha256": "08d5bf81fe9d79876b01c7baecd0a8e4a46a35da5d8a37b7451513efd22af544",
+    "selected_feeder": "LPN-S000000065878:1",
+    "selected_rows": 1344,
+    "selected_sha256": "7380113dee7dd12c7b3739aa642bce1d510c9aa3d14fc48a54190bd724611e33",
+    "processed_sha256": "a2e0993423c2f01417f43172df171b4cb603605e1bf76d558aa1647bbede8608",
+    "window_start_london": "2025-04-02T00:00:00+01:00",
+    "window_end_london_exclusive": "2025-04-30T00:00:00+01:00"
+  },
+  "main": {
+    "complete_days": 28,
+    "failed_days": 0,
+    "primary_median_pctpoint": 1.4712060705106673,
+    "primary_positive_days": 19,
+    "later_window_median_pctpoint": 2.1436190569634306,
+    "later_window_positive_days": 7,
+    "all_days_median_pctpoint": 1.6757210571008057,
+    "all_days_positive_days": 26,
+    "surrogate_winner_counts": {"B1_BULK_ACI": 24, "P_DUAL_MCI_ACI": 4}
+  },
+  "moving_block_bootstrap": {
+    "2": [0.8227079759992275, 3.828888054469596],
+    "3": [0.8227079759992275, 3.9655015383345065],
+    "4": [0.8227079759992275, 3.9655015383345065]
+  },
+  "signal_role": {
+    "complete_schedules": 168,
+    "alpha_median_effect_pctpoint": {
+      "0.0": 0.0,
+      "0.25": 0.2637809240828404,
+      "0.5": 0.7266632434272785,
+      "0.75": 1.775469675567999,
+      "1.0": 1.6757210563461387
+    },
+    "fixed_shuffle_actual_order_gain_median_pctpoint": 3.1447650426660836,
+    "fixed_shuffle_actual_order_better_days": 26
+  },
+  "direct_source_objective_2_percent": {
+    "complete_day_budget_cases": 140,
+    "median_regret_pctpoint": {
+      "B1": 0.15648369169665222,
+      "B2": 3.0428478760952586,
+      "B3": 4.1601019232192264,
+      "P": 1.9298210990881535,
+      "B4": 0.0
+    },
+    "median_direction_agreement": {
+      "B1": 0.8895663956639566,
+      "B2": 0.6221872187218722,
+      "B3": 0.6370731707317073,
+      "P": 0.6467564693371145,
+      "B4": 1.0
+    },
+    "closest_nonreference_days": {"B1": 24, "P": 4},
+    "b4_lowest_days": 28
+  },
+  "temporal_null": {
+    "complete_schedules": 2660,
+    "median_actual_order_gain_pctpoint": {
+      "circular_shift": 4.110177815465497,
+      "four_step_block": 4.04344591216416,
+      "cross_day_same_slot": 2.1143981170471298
+    },
+    "days_empirical_p_at_most_0_05": {
+      "circular_shift": 18,
+      "four_step_block": 21,
+      "cross_day_same_slot": 22
+    }
+  },
+  "mci_probe_scale": {
+    "0.5": {"median_rank_rho": 0.9993998046822017, "median_effect_pctpoint": 1.6748494652670873, "stable_days": 28},
+    "1.0": {"median_rank_rho": 1.0, "median_effect_pctpoint": 1.6757210545657526, "stable_days": 28},
+    "2.0": {"median_rank_rho": 0.998896250983371, "median_effect_pctpoint": 1.696320610372923, "stable_days": 28}
+  },
+  "storage_carbon_boundary": {
+    "zero": {"median_effect_pctpoint": 2.552004883734169, "positive_days": 28},
+    "daily_first_gb_aci": {"median_effect_pctpoint": 1.6757210571008057, "positive_days": 26},
+    "continuous_cross_day": {"median_effect_pctpoint": 1.7673466880759616, "positive_days": 26}
+  },
+  "cost_budget_10_percent": {
+    "p_median_change_vs_b0_pct": 0.6674055310224025,
+    "p_rebound_days": 17,
+    "p_reduction_days": 11,
+    "p_vs_b3_median_pctpoint": 4.2510858240074505
+  },
+  "mip": {
+    "complete_cases": 18,
+    "max_realized_relative_gap": 9.320020715086845e-7,
+    "two_percent_max_action_difference_kw": {
+      "B3": 0.0004415578715359,
+      "P": 0.0049789361223846,
+      "B4": 0.0002137784933644
+    },
+    "ten_percent_b3_max_action_difference_kw": 38.04222594792623,
+    "ten_percent_b3_max_absolute_objective_difference": 307.2783813898495
+  },
+  "numeric_tolerance": {
+    "reported_metric_absolute": 0.001,
+    "energy_balance_kw": 1e-6,
+    "carbon_closure_relative": 1e-8,
+    "analysis_branch_capacity_kw": 2e-5
+  }
+}

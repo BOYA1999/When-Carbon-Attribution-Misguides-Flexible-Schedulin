@@ -1,0 +1,19 @@
+{
+  "campaign_id": "pedf8_signal_role_adversarial_20260802_v1",
+  "parent_run": "artifacts/experiment/pedf8_main_20260802_v1",
+  "signal": "s_alpha=(1-alpha)*ACI+alpha*MCI",
+  "alpha": [0.0, 0.25, 0.5, 0.75, 1.0],
+  "adversarial_control": "Use one deterministic time permutation for all four flexible nodes, preserving values while breaking temporal alignment.",
+  "fixed_conditions": [
+    "28 frozen dates",
+    "PEDF 8 topology and device settings",
+    "2 percent cost budget",
+    "CLARABEL solver and tolerances",
+    "2e-5 kW analysis branch capacity acceptance tolerance",
+    "identical flexible degrees of freedom",
+    "one scheduling solve per candidate signal"
+  ],
+  "comparability_boundary": "Scheduling solves are equalized. Finite difference construction of MCI is not equalized.",
+  "primary_metric": "100*(E_alpha0-E_variant)/E_B0",
+  "completion_condition": "Every planned case remains in the denominator as complete or failed. No rescue variant is added after observing results."
+}

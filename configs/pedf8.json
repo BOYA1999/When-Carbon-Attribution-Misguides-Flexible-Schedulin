@@ -1,0 +1,88 @@
+{
+  "seed": 20260802,
+  "dt_h": 0.5,
+  "steps_per_day": 48,
+  "s_base_kw": 100.0,
+  "v_base_v": 375.0,
+  "voltage_min_pu": 0.95,
+  "voltage_max_pu": 1.05,
+  "nodes": 8,
+  "branches": [
+    [0, 1, 0.020, 120.0],
+    [1, 2, 0.025, 60.0],
+    [1, 3, 0.018, 80.0],
+    [1, 4, 0.030, 50.0],
+    [2, 5, 0.028, 50.0],
+    [2, 6, 0.024, 50.0],
+    [3, 7, 0.022, 50.0]
+  ],
+  "efficiency": {
+    "pcc_import": 0.97,
+    "pcc_export": 0.96,
+    "pv": 0.985,
+    "ess_charge": 0.96,
+    "ess_discharge": 0.95,
+    "ev": 0.95
+  },
+  "pv": {
+    "capacity_kwp": 80.0,
+    "temperature_coefficient_per_c": -0.004,
+    "reference_temperature_c": 25.0
+  },
+  "ess": {
+    "capacity_kwh": 160.0,
+    "power_charge_kw": 60.0,
+    "power_discharge_kw": 60.0,
+    "soc_min": 0.2,
+    "soc_max": 0.9,
+    "soc_initial": 0.5,
+    "degradation_gbp_per_kwh_throughput": 0.02
+  },
+  "load_share": {
+    "fixed_node_1": 0.35,
+    "fixed_node_4": 0.20,
+    "hvac": 0.20,
+    "ev": 0.10,
+    "task": 0.15
+  },
+  "hvac": {
+    "power_max_kw": 30.0,
+    "thermal_a": 0.99,
+    "thermal_beta_c_per_kwh": 0.02,
+    "temperature_initial_c": 22.0,
+    "occupied_start_hour": 8,
+    "occupied_end_hour": 18,
+    "occupied_min_c": 21.0,
+    "occupied_max_c": 25.0,
+    "unoccupied_min_c": 19.0,
+    "unoccupied_max_c": 27.0
+  },
+  "ev": {
+    "power_max_kw": 44.0,
+    "available_start_hour": 18,
+    "available_end_hour": 8
+  },
+  "task": {
+    "power_multiplier_max": 2.0,
+    "maximum_delay_steps": 8
+  },
+  "grid": {
+    "import_max_kw": 120.0,
+    "export_max_kw": 120.0,
+    "export_revenue_gbp_per_kwh": 0.0
+  },
+  "cost_budgets": [0.0, 0.01, 0.02, 0.05, 0.10],
+  "solver": {
+    "name": "CLARABEL",
+    "max_iter": 500,
+    "tol_gap_abs": 1e-8,
+    "tol_feas": 1e-8
+  },
+  "tolerance": {
+    "energy_balance_kw": 1e-6,
+    "carbon_closure_relative": 1e-6,
+    "carbon_unit_test_relative": 1e-8,
+    "socp_gap": 1e-4,
+    "constraint": 1e-5
+  }
+}
