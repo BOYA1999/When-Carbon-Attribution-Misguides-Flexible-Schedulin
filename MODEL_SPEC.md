@@ -15,3 +15,11 @@ The primary effect is `100 * (E_B3 - E_P) / E_B0`, with the day as the statistic
 The signal role ablation replaces B3 action intensity with `(1 - alpha) * ACI + alpha * MCI` for alpha equal to 0, 0.25, 0.5, 0.75 and 1. It equalizes scheduling solves, not the upstream construction cost of MCI. Temporal controls use all 47 nonzero circular shifts, 24 four step block permutations and 24 cross day same slot substitutions for every target day.
 
 Storage charge and discharge complementarity is recovered deterministically after the relaxed solve. Representative SCIP mixed integer comparisons use three dates, two budgets and B3, P and B4, giving 18 cases with a configured relative gap limit of `1e-6`. Agreement at 2% is a sampled consistency check. It is not a claim of exact recovery on every case.
+
+## IEEE 33 node DC transfer
+
+`configs/pedf33dc.json` replaces only the spatial network specification. It takes the 32 closed radial branches, active load values and branch resistance ratios from the official MATPOWER `case33bw` file. Node indices in code are zero based. Device placements at code nodes 17, 21, 24, 29 and 32 correspond to standard buses 18, 22, 25, 30 and 33.
+
+The transfer does not use reactance, reactive demand or normally open tie lines. Each source resistance in ohms is multiplied by 0.0065 before entering the DC branch model. The resulting maximum root to bus cumulative resistance is 0.07191 pu, close to the eight node value of 0.073 pu. This rule preserves relative case33bw resistances while matching the worst radial path severity before results are observed. Branch ratings are uniformly 160 kW because the source case does not provide nonzero continuous ratings. The 55% fixed demand share is allocated according to normalized case33bw active demand. Every temporal series, PEDF device rating, efficiency, solver setting, seed and numerical tolerance remains unchanged.
+
+The transfer evaluates B1, B3, P and B4 at 2 and 10% budgets. The paired primary statistic remains `100 * (E_B3 - E_P) / E_B0`. A failed B1 schedule is recorded as a method failure without deleting valid B3, P and B4 rows on that date. The experiment supports a topology sensitivity statement only. It is not an AC feeder validation or a field result.

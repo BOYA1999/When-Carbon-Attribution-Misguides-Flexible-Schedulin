@@ -48,7 +48,20 @@ class DayOptimizer:
         self.t = config["steps_per_day"]
         self.dt = config["dt_h"]
         self.sbase = config["s_base_kw"]
-        self.edges = [tuple(x) for x in config["branches"]]
+        resistance_scale = config.get("branch_resistance_scale", 1.0)
+        self.edges = [
+            (i, j, r * resistance_scale, pmax)
+            for i, j, r, pmax in config["branches"]
+        ]
+        self.device_nodes = config.get(
+            "device_nodes",
+            {"hvac": 2, "ess": 3, "pv": 5, "ev": 6, "task": 7},
+        )
+        if any(node <= 0 or node >= self.n for node in self.device_nodes.values()):
+            raise ValueError("device node outside the non-root network")
+        self.flexible_nodes = tuple(
+            self.device_nodes[key] for key in ("hvac", "ess", "ev", "task")
+        )
         self._build()
 
     def _build(self) -> None:
@@ -135,15 +148,13 @@ class DayOptimizer:
                 voltage[j, :]
                 == voltage[i, :] - 2 * r * p[e, :] + r**2 * ell[e, :]
             ]
-            for k in range(t):
-                constraints.append(
-                    cp.SOC(
-                        voltage[i, k] + ell[e, k],
-                        cp.hstack(
-                            [2 * p[e, k], voltage[i, k] - ell[e, k]]
-                        ),
-                    )
+            constraints.append(
+                cp.SOC(
+                    voltage[i, :] + ell[e, :],
+                    cp.vstack([2 * p[e, :], voltage[i, :] - ell[e, :]]),
+                    axis=0,
                 )
+            )
 
         constraints += [pv <= self.pv_available]
         ess = c["ess"]
@@ -235,13 +246,23 @@ class DayOptimizer:
             constraints += [task == self.task_base]
 
         node_demand = [self.probe[i, :] for i in range(self.n)]
-        node_demand[1] = node_demand[1] + shares["fixed_node_1"] * load
-        node_demand[2] = node_demand[2] + hvac
-        node_demand[3] = node_demand[3] + charge - discharge
-        node_demand[4] = node_demand[4] + shares["fixed_node_4"] * load
-        node_demand[5] = node_demand[5] - eff["pv"] * pv
-        node_demand[6] = node_demand[6] + ev
-        node_demand[7] = node_demand[7] + task
+        if "fixed_load_weights" in c:
+            fixed_weights = np.asarray(c["fixed_load_weights"], float)
+            if len(fixed_weights) != self.n or fixed_weights.sum() <= 0:
+                raise ValueError("fixed_load_weights must match the node count")
+            fixed_weights = fixed_weights / fixed_weights.sum()
+            fixed_share = shares["fixed_node_1"] + shares["fixed_node_4"]
+            for node in range(1, self.n):
+                node_demand[node] = node_demand[node] + fixed_share * fixed_weights[node] * load
+        else:
+            node_demand[1] = node_demand[1] + shares["fixed_node_1"] * load
+            node_demand[4] = node_demand[4] + shares["fixed_node_4"] * load
+        nodes = self.device_nodes
+        node_demand[nodes["hvac"]] = node_demand[nodes["hvac"]] + hvac
+        node_demand[nodes["ess"]] = node_demand[nodes["ess"]] + charge - discharge
+        node_demand[nodes["pv"]] = node_demand[nodes["pv"]] - eff["pv"] * pv
+        node_demand[nodes["ev"]] = node_demand[nodes["ev"]] + ev
+        node_demand[nodes["task"]] = node_demand[nodes["task"]] + task
         self.node_demand = node_demand
 
         for node in range(1, self.n):

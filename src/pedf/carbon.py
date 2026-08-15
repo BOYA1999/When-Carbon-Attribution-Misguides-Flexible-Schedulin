@@ -18,6 +18,14 @@ def trace_carbon(
     edges = [tuple(x) for x in config["branches"]]
     eff = config["efficiency"]
     shares = config["load_share"]
+    nodes = config.get(
+        "device_nodes",
+        {"hvac": 2, "ess": 3, "pv": 5, "ev": 6, "task": 7},
+    )
+    fixed_weights = None
+    if "fixed_load_weights" in config:
+        fixed_weights = np.asarray(config["fixed_load_weights"], float)
+        fixed_weights = fixed_weights / fixed_weights.sum()
     initial_ci = float(bulk_ci[0] if initial_storage_ci is None else initial_storage_ci)
     energy = result["ess_energy_kwh"]
     carbon_stock = np.zeros(t_count + 1)
@@ -70,10 +78,10 @@ def trace_carbon(
         source_carbon_rate[0] += (
             eff["pcc_import"] * grid_import[t] * bulk_ci[t]
         )
-        source_power[5] += eff["pv"] * pv[t]
-        source_power[3] += discharge[t]
+        source_power[nodes["pv"]] += eff["pv"] * pv[t]
+        source_power[nodes["ess"]] += discharge[t]
         if memory:
-            source_carbon_rate[3] += discharge[t] * q_storage
+            source_carbon_rate[nodes["ess"]] += discharge[t] * q_storage
 
         matrix = np.zeros((n, n))
         rhs = source_carbon_rate.copy()
@@ -84,7 +92,7 @@ def trace_carbon(
         for node in range(n):
             matrix[node, node] += total_in[node]
         if not memory:
-            matrix[3, 3] -= discharge[t]
+            matrix[nodes["ess"], nodes["ess"]] -= discharge[t]
         for node in range(n):
             if np.sum(np.abs(matrix[node])) < 1e-10:
                 matrix[node, node] = 1.0
@@ -101,15 +109,19 @@ def trace_carbon(
         pcc_loss_carbon += (
             dt * bulk_ci[t] * (1 - eff["pcc_import"]) * grid_import[t]
         )
-        fixed_carbon += dt * (
-            node_ci[1] * shares["fixed_node_1"] * load_kw[t]
-            + node_ci[4] * shares["fixed_node_4"] * load_kw[t]
-        )
-        hvac_carbon += dt * node_ci[2] * hvac[t]
-        ev_carbon += dt * node_ci[6] * ev[t]
-        task_carbon += dt * node_ci[7] * task[t]
+        if fixed_weights is None:
+            fixed_carbon += dt * (
+                node_ci[1] * shares["fixed_node_1"] * load_kw[t]
+                + node_ci[4] * shares["fixed_node_4"] * load_kw[t]
+            )
+        else:
+            fixed_share = shares["fixed_node_1"] + shares["fixed_node_4"]
+            fixed_carbon += dt * fixed_share * load_kw[t] * np.dot(node_ci, fixed_weights)
+        hvac_carbon += dt * node_ci[nodes["hvac"]] * hvac[t]
+        ev_carbon += dt * node_ci[nodes["ev"]] * ev[t]
+        task_carbon += dt * node_ci[nodes["task"]] * task[t]
         ess_charge_loss_carbon += (
-            dt * node_ci[3] * (1 - eff["ess_charge"]) * charge[t]
+            dt * node_ci[nodes["ess"]] * (1 - eff["ess_charge"]) * charge[t]
         )
         ess_discharge_loss_carbon += (
             dt * q_storage * (1 / eff["ess_discharge"] - 1) * discharge[t]
@@ -123,7 +135,7 @@ def trace_carbon(
         )
         if memory:
             carbon_stock[t + 1] = carbon_stock[t] + dt * (
-                node_ci[3] * eff["ess_charge"] * charge[t]
+                node_ci[nodes["ess"]] * eff["ess_charge"] * charge[t]
                 - q_storage * discharge[t] / eff["ess_discharge"]
             )
             if carbon_stock[t + 1] < -1e-6:
@@ -154,6 +166,7 @@ def trace_carbon(
         "loss_carbon_kg": loss_carbon / 1000,
         "export_carbon_kg": export_carbon / 1000,
         "carbon_closure_relative": float(closure),
+        "device_nodes": nodes,
         "carbon_components_kg": {
             "fixed": fixed_carbon / 1000,
             "hvac": hvac_carbon / 1000,
@@ -173,12 +186,16 @@ def signals_from_trace(trace: dict, bulk_ci: np.ndarray, mode: str) -> dict[str,
     if mode == "bulk":
         return {key: np.asarray(bulk_ci, float).copy() for key in ("hvac", "ev", "task", "charge", "discharge")}
     ci = trace["nodal_ci_g_per_kwh"]
+    nodes = trace.get(
+        "device_nodes",
+        {"hvac": 2, "ess": 3, "pv": 5, "ev": 6, "task": 7},
+    )
     signals = {
-        "hvac": ci[2].copy(),
-        "ev": ci[6].copy(),
-        "task": ci[7].copy(),
-        "charge": ci[3].copy(),
-        "discharge": ci[3].copy(),
+        "hvac": ci[nodes["hvac"]].copy(),
+        "ev": ci[nodes["ev"]].copy(),
+        "task": ci[nodes["task"]].copy(),
+        "charge": ci[nodes["ess"]].copy(),
+        "discharge": ci[nodes["ess"]].copy(),
     }
     if mode == "memory":
         signals["discharge"] = trace["storage_ci_g_per_kwh"].copy()

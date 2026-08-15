@@ -1,0 +1,137 @@
+{
+  "seed": 20260802,
+  "dt_h": 0.5,
+  "steps_per_day": 48,
+  "s_base_kw": 100.0,
+  "v_base_v": 375.0,
+  "voltage_min_pu": 0.95,
+  "voltage_max_pu": 1.05,
+  "nodes": 33,
+  "benchmark_source": {
+    "name": "MATPOWER case33bw",
+    "url": "https://github.com/MATPOWER/matpower/blob/master/data/case33bw.m",
+    "source_case": "Baran-Wu 33-bus radial distribution system"
+  },
+  "dc_transfer": {
+    "interpretation": "synthetic DC topology-transfer stress test, not an AC power-flow reproduction",
+    "used": ["32 closed radial branches", "active-load spatial weights", "branch resistance ratios"],
+    "excluded": ["reactance", "reactive demand", "normally open tie lines"],
+    "branch_rating_rule": "uniform synthetic 160 kW because case33bw rateA is zero"
+  },
+  "branch_resistance_scale": 0.0065,
+  "branches": [
+    [0, 1, 0.0922, 160.0],
+    [1, 2, 0.4930, 160.0],
+    [2, 3, 0.3660, 160.0],
+    [3, 4, 0.3811, 160.0],
+    [4, 5, 0.8190, 160.0],
+    [5, 6, 0.1872, 160.0],
+    [6, 7, 0.7114, 160.0],
+    [7, 8, 1.0300, 160.0],
+    [8, 9, 1.0440, 160.0],
+    [9, 10, 0.1966, 160.0],
+    [10, 11, 0.3744, 160.0],
+    [11, 12, 1.4680, 160.0],
+    [12, 13, 0.5416, 160.0],
+    [13, 14, 0.5910, 160.0],
+    [14, 15, 0.7463, 160.0],
+    [15, 16, 1.2890, 160.0],
+    [16, 17, 0.7320, 160.0],
+    [1, 18, 0.1640, 160.0],
+    [18, 19, 1.5042, 160.0],
+    [19, 20, 0.4095, 160.0],
+    [20, 21, 0.7089, 160.0],
+    [2, 22, 0.4512, 160.0],
+    [22, 23, 0.8980, 160.0],
+    [23, 24, 0.8960, 160.0],
+    [5, 25, 0.2030, 160.0],
+    [25, 26, 0.2842, 160.0],
+    [26, 27, 1.0590, 160.0],
+    [27, 28, 0.8042, 160.0],
+    [28, 29, 0.5075, 160.0],
+    [29, 30, 0.9744, 160.0],
+    [30, 31, 0.3105, 160.0],
+    [31, 32, 0.3410, 160.0]
+  ],
+  "fixed_load_weights": [
+    0, 100, 90, 120, 60, 60, 200, 200, 60, 60, 45,
+    60, 60, 120, 60, 60, 60, 90, 90, 90, 90, 90,
+    90, 420, 420, 60, 60, 60, 120, 200, 150, 210, 60
+  ],
+  "device_nodes": {
+    "hvac": 17,
+    "ess": 21,
+    "pv": 24,
+    "ev": 29,
+    "task": 32
+  },
+  "efficiency": {
+    "pcc_import": 0.97,
+    "pcc_export": 0.96,
+    "pv": 0.985,
+    "ess_charge": 0.96,
+    "ess_discharge": 0.95,
+    "ev": 0.95
+  },
+  "pv": {
+    "capacity_kwp": 80.0,
+    "temperature_coefficient_per_c": -0.004,
+    "reference_temperature_c": 25.0
+  },
+  "ess": {
+    "capacity_kwh": 160.0,
+    "power_charge_kw": 60.0,
+    "power_discharge_kw": 60.0,
+    "soc_min": 0.2,
+    "soc_max": 0.9,
+    "soc_initial": 0.5,
+    "degradation_gbp_per_kwh_throughput": 0.02
+  },
+  "load_share": {
+    "fixed_node_1": 0.35,
+    "fixed_node_4": 0.20,
+    "hvac": 0.20,
+    "ev": 0.10,
+    "task": 0.15
+  },
+  "hvac": {
+    "power_max_kw": 30.0,
+    "thermal_a": 0.99,
+    "thermal_beta_c_per_kwh": 0.02,
+    "temperature_initial_c": 22.0,
+    "occupied_start_hour": 8,
+    "occupied_end_hour": 18,
+    "occupied_min_c": 21.0,
+    "occupied_max_c": 25.0,
+    "unoccupied_min_c": 19.0,
+    "unoccupied_max_c": 27.0
+  },
+  "ev": {
+    "power_max_kw": 44.0,
+    "available_start_hour": 18,
+    "available_end_hour": 8
+  },
+  "task": {
+    "power_multiplier_max": 2.0,
+    "maximum_delay_steps": 8
+  },
+  "grid": {
+    "import_max_kw": 160.0,
+    "export_max_kw": 160.0,
+    "export_revenue_gbp_per_kwh": 0.0
+  },
+  "cost_budgets": [0.02, 0.10],
+  "solver": {
+    "name": "CLARABEL",
+    "max_iter": 500,
+    "tol_gap_abs": 1e-8,
+    "tol_feas": 1e-8
+  },
+  "tolerance": {
+    "energy_balance_kw": 1e-6,
+    "carbon_closure_relative": 1e-6,
+    "carbon_unit_test_relative": 1e-8,
+    "socp_gap": 1e-4,
+    "constraint": 1e-5
+  }
+}

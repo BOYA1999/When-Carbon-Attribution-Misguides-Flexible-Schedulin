@@ -23,7 +23,7 @@ def compute_mci(
     max_gap = baseline["socp_gap_max"]
     failures = []
     base_emissions = baseline["source_emissions_kg"]
-    for node in FLEXIBLE_NODES:
+    for node in model.flexible_nodes:
         progress(f"MCI {model.day['date']} node={node}")
         for t in range(model.t):
             epsilon = epsilon_scale * max(0.1, 0.01 * model.day["load_kw"][t])
@@ -50,7 +50,7 @@ def compute_mci(
             ) * 1000 / (epsilon * model.dt)
             mci[node, t] = 0.5 * (forward[node, t] + backward[node, t])
             schemes["central"] += 1
-    selected = mci[list(FLEXIBLE_NODES)].ravel()
+    selected = mci[list(model.flexible_nodes)].ravel()
     paired = np.isfinite(forward) & np.isfinite(backward)
     normalized_disagreement = np.abs(forward[paired] - backward[paired]) / np.maximum(
         np.abs(mci[paired]), 25.0
@@ -82,9 +82,13 @@ def compute_mci(
     return mci, diagnostics
 
 
-def mismatch_metrics(aci: np.ndarray, mci: np.ndarray) -> dict:
-    a = aci[list(FLEXIBLE_NODES)].ravel()
-    m = mci[list(FLEXIBLE_NODES)].ravel()
+def mismatch_metrics(
+    aci: np.ndarray,
+    mci: np.ndarray,
+    flexible_nodes: tuple[int, ...] = FLEXIBLE_NODES,
+) -> dict:
+    a = aci[list(flexible_nodes)].ravel()
+    m = mci[list(flexible_nodes)].ravel()
     valid = np.isfinite(a) & np.isfinite(m)
     a = a[valid]
     m = m[valid]
@@ -150,7 +154,13 @@ def canonical_metrics(method: str, result: dict, trace: dict) -> dict:
     return row
 
 
-def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) -> dict:
+def run_day(
+    config: dict,
+    day: dict,
+    cost_budget: float = 0.02,
+    progress=print,
+    allow_method_failures: bool = False,
+) -> dict:
     model = DayOptimizer(config, day)
     progress(f"DAY {day['date']} B0")
     b0 = model.solve_econ()
@@ -175,10 +185,14 @@ def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) 
         ),
     }
     results = {"B0_ECON": b0}
+    method_failures = []
     for method, signals in signal_sets.items():
         progress(f"DAY {day['date']} {method}")
         result = model.solve_signal(signals, cost_cap)
         if result is None:
+            if allow_method_failures:
+                method_failures.append({"method": method, "reason": "solve failed"})
+                continue
             raise RuntimeError(f"{method} failed on {day['date']}")
         if (
             result["cost_cap_violation_gbp"] > 1e-4
@@ -186,15 +200,28 @@ def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) 
             or result["simultaneous_charge_discharge_kw"] > config["tolerance"]["constraint"]
             or result["negative_price_export_kw"] > config["tolerance"]["constraint"]
         ):
+            if allow_method_failures:
+                method_failures.append(
+                    {
+                        "method": method,
+                        "reason": "physical recovery failed",
+                        "cost_cap_violation_gbp": result["cost_cap_violation_gbp"],
+                        "branch_capacity_violation_kw": result["branch_capacity_violation_kw"],
+                        "simultaneous_charge_discharge_kw": result["simultaneous_charge_discharge_kw"],
+                        "negative_price_export_kw": result["negative_price_export_kw"],
+                    }
+                )
+                continue
             raise RuntimeError(f"{method} physical recovery failed on {day['date']}")
         results[method] = result
     mci, mci_diagnostics = compute_mci(model, b0, progress=progress)
+    nodes = model.device_nodes
     p_signals = {
-        "hvac": mci[2].copy(),
-        "charge": mci[3].copy(),
-        "discharge": mci[3].copy(),
-        "ev": mci[6].copy(),
-        "task": mci[7].copy(),
+        "hvac": mci[nodes["hvac"]].copy(),
+        "charge": mci[nodes["ess"]].copy(),
+        "discharge": mci[nodes["ess"]].copy(),
+        "ev": mci[nodes["ev"]].copy(),
+        "task": mci[nodes["task"]].copy(),
     }
     progress(f"DAY {day['date']} P_DUAL_MCI_ACI")
     proposed = model.solve_signal(p_signals, cost_cap)
@@ -219,12 +246,16 @@ def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) 
         )
         for method, result in results.items()
     }
-    naive_b2 = trace_carbon(
-        results["B2_NODAL_ACI"],
-        config,
-        day["carbon_g_per_kwh"],
-        day["load_kw"],
-        memory=False,
+    naive_b2 = (
+        trace_carbon(
+            results["B2_NODAL_ACI"],
+            config,
+            day["carbon_g_per_kwh"],
+            day["load_kw"],
+            memory=False,
+        )
+        if "B2_NODAL_ACI" in results
+        else None
     )
     rows = [canonical_metrics(method, results[method], traces[method]) for method in results]
     b3 = results["B3_NODAL_ACI_MEM"]
@@ -250,10 +281,10 @@ def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) 
         "b2_naive_minus_memory_attribution_kg": float(
             naive_b2["attributed_emissions_kg"]
             - traces["B2_NODAL_ACI"]["attributed_emissions_kg"]
-        ),
+        ) if naive_b2 is not None else float("nan"),
         "mci": mci_diagnostics,
         "aci_mci_mismatch": mismatch_metrics(
-            memory_reference["nodal_ci_g_per_kwh"], mci
+            memory_reference["nodal_ci_g_per_kwh"], mci, model.flexible_nodes
         ),
     }
     arrays = {
@@ -268,4 +299,9 @@ def run_day(config: dict, day: dict, cost_budget: float = 0.02, progress=print) 
     for method, result in results.items():
         for key in action_keys + ("grid_import_kw", "grid_export_kw", "pv_array_kw"):
             arrays[f"{method}__{key}"] = result[key]
-    return {"metrics": rows, "summary": summary, "arrays": arrays}
+    return {
+        "metrics": rows,
+        "summary": summary,
+        "arrays": arrays,
+        "method_failures": method_failures,
+    }

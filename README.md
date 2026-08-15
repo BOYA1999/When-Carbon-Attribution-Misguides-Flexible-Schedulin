@@ -4,9 +4,19 @@ This repository contains computation code for a public data driven study of aver
 
 The central question is narrow: when nodal average carbon intensity and response based marginal carbon intensity disagree, how much of an emission response belongs to marginal timing before a direct source objective, a storage carbon boundary or a larger action invalidates that interpretation? The code retains all counterexamples. It does not claim that marginal carbon intensity dominates Great Britain average intensity or direct source emission minimization.
 
+The JEET revision adds a frozen 33 node topology transfer. Its purpose is not to claim a new IEEE feeder model. It tests whether the same local interpretation survives a larger radial structure when temporal inputs, PEDF ratings, carbon accounting, budgets and tolerances are unchanged.
+
 ## Frozen study contract
 
 The study uses 28 complete local days from 2 April through 29 April 2025. Each day has 48 half hour periods. The first 21 days are the primary set. The last seven are a later window check, not external validation. The random seed is 20260802. Network, device, solver and acceptance settings are frozen in `configs/pedf8.json`.
+
+The transfer configuration is frozen in `configs/pedf33dc.json`. It uses the 32 closed radial branches, active load entries and branch resistance ratios from MATPOWER `case33bw`:
+
+* Official case file: https://github.com/MATPOWER/matpower/blob/master/data/case33bw.m
+* MATPOWER project: https://github.com/MATPOWER/matpower
+* Source study: M. E. Baran and F. F. Wu, Network reconfiguration in distribution systems for loss reduction and load balancing, IEEE Transactions on Power Delivery 4(2), 1401 to 1407, 1989.
+
+This is a DC adaptation, not an AC power flow reproduction. Reactance, reactive demand and the five normally open tie lines are excluded. Original resistance values in ohms are multiplied by one factor of 0.0065 to retain their relative profile in the 100 kW DC base. This gives a maximum root to bus cumulative resistance of 0.07191 pu, close to 0.073 pu in the eight node network, so the worst path resistance severity is matched before results are observed. The source case gives zero branch ratings, so a common synthetic 160 kW limit is declared for every branch. Fixed demand is distributed across standard buses 2 to 33 according to normalized active load. HVAC, storage, PV, EV and the shiftable task are placed at standard buses 18, 22, 25, 30 and 33 before results are observed.
 
 The UK Power Networks source is a 7,021,267,198 byte monthly file. It is deliberately excluded from Git. The selection script verifies its SHA 256 digest before scanning it. It then reconstructs the frozen 1,344 row feeder slice and checks that slice against a second digest. Public API data are fetched for the same UTC window. The final joined file must match the digest in `expected_results.json` before experiments can start.
 
@@ -153,6 +163,22 @@ python scripts/verify_reproduction.py
 
 A successful reproduction prints `"status": "PASS"`. The verifier uses a 0.001 absolute tolerance for reported effect metrics and the stricter physical tolerances stored in `expected_results.json`.
 
+10. Run the IEEE 33 node DC topology transfer after the same joined input has passed its SHA 256 gate.
+
+```bash
+python scripts/run_ieee33_extension.py --days 28
+```
+
+The command writes `artifacts/ieee33dc_main/daily_metrics.csv`, day level MCI arrays, diagnostics, method failures, an environment record and SHA 256 hashes. A failure in B1 does not delete valid B3, P or B4 schedules from the same date. An entire day is incomplete only if a method required by the paired B3 versus P question fails.
+
+11. Generate the cross topology figure after step 8 has created the eight node direct objective results and step 10 has created the 33 node results.
+
+```bash
+python scripts/plot_ieee33_extension.py
+```
+
+The figure script writes the derived source CSV plus PDF, 600 dpi PNG and LZW compressed 600 dpi TIFF exports. Plotting is deterministic under seed 20260802.
+
 ## Expected result boundaries
 
 The primary 21 day median correction of P relative to B3 is 1.471 percentage points of B0 emissions. Circular moving block bootstrap intervals for block lengths of two to four days have a common lower bound of 0.823 points and upper bounds from 3.829 to 3.966. The seven later window days are all positive.
@@ -168,6 +194,7 @@ Two supporting slices have intentional failures that remain in their denominator
 ## Repository layout
 
 * `configs/pedf8.json` freezes the network, devices, solver and tolerances.
+* `configs/pedf33dc.json` records every topology transfer assumption and original case33bw active load and resistance entry.
 * `src/pedf/` contains dispatch, physical flow recovery, carbon tracing and MCI computation.
 * `scripts/gate_d0_select_load.py` downloads and deterministically selects the UK Power Networks input.
 * `scripts/fetch_public_timeseries.py` joins load, carbon intensity, price and weather.
@@ -176,6 +203,8 @@ Two supporting slices have intentional failures that remain in their denominator
 * `scripts/run_analysis_campaign.py` runs cost, loss, flexibility, capacity, stress and scale slices.
 * `scripts/run_internal_revision_campaign.py` runs B4, MCI probe, storage boundary, temporal null, moving block bootstrap and SCIP slices.
 * `scripts/verify_reproduction.py` checks the final outputs.
+* `scripts/run_ieee33_extension.py` runs the 33 node paired 2 and 10% budget transfer with method level failure accounting.
+* `scripts/plot_ieee33_extension.py` rebuilds the cross topology source table and 600 dpi figure.
 * `tests/` contains physical dispatch and carbon closure tests.
 * `expected_results.json` contains only hashes, counts and aggregate target metrics. It contains no time series or daily results.
 

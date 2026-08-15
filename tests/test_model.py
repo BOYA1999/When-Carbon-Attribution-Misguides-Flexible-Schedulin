@@ -1,11 +1,17 @@
+import os
+from pathlib import Path
+
 import numpy as np
 
 from pedf import DayOptimizer, load_config, load_days, signals_from_trace, trace_carbon
 
 
+DATA_PATH = Path(os.environ.get("PEDF_DATA_PATH", "data/processed/timeseries.csv"))
+
+
 def test_real_day_dispatch_and_carbon_closure():
     config = load_config("configs/pedf8.json")
-    day = load_days("data/processed/timeseries.csv")[0]
+    day = load_days(DATA_PATH)[0]
     model = DayOptimizer(config, day)
     result = model.solve_econ()
     assert result is not None
@@ -72,3 +78,19 @@ def test_handcrafted_grid_only_carbon_balance():
     )
     assert np.max(np.abs(trace["nodal_ci_g_per_kwh"] - 100.0)) < 1e-10
     assert trace["carbon_closure_relative"] < 1e-12
+
+
+def test_ieee33_transfer_dispatch_and_carbon_closure():
+    config = load_config("configs/pedf33dc.json")
+    day = load_days(DATA_PATH)[0]
+    model = DayOptimizer(config, day)
+    result = model.solve_econ()
+    assert result is not None
+    assert len(model.edges) == 32
+    assert model.device_nodes == config["device_nodes"]
+    assert result["energy_balance_max_kw"] < config["tolerance"]["energy_balance_kw"]
+    assert result["voltage_violation_pu"] < config["tolerance"]["constraint"]
+    trace = trace_carbon(result, config, day["carbon_g_per_kwh"], day["load_kw"], memory=True)
+    assert trace["carbon_closure_relative"] < config["tolerance"]["carbon_unit_test_relative"]
+    signals = signals_from_trace(trace, day["carbon_g_per_kwh"], "memory")
+    assert all(np.isfinite(values).all() for values in signals.values())
